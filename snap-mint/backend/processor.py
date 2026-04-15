@@ -86,6 +86,17 @@ def download_video(url: str, job_id: str, progress_cb: Callable[[int], None]) ->
     # iOS client bypasses YouTube's PO token / 403 restrictions reliably.
     # Android is tried as fallback. Both avoid the "HTTP 403 Forbidden" error
     # that the default web client now gets due to YouTube's bot-detection.
+    # ── Handle YouTube Cookies for Bot Bypass ────────────────────────────────
+    cookies_content = os.getenv("YOUTUBE_COOKIES")
+    cookie_file_path = None
+    if cookies_content:
+        cookie_file_path = os.path.join(tempfile.gettempdir(), "youtube_cookies.txt")
+        # Ensure it has the # Netscape HTTP Cookie File header needed by yt-dlp
+        if not cookies_content.startswith("# Netscape"):
+            cookies_content = "# Netscape HTTP Cookie File\n" + cookies_content
+        with open(cookie_file_path, "w", encoding="utf-8") as f:
+            f.write(cookies_content)
+
     ydl_opts = {
         "format": _fmt,
         "outtmpl": output_path,
@@ -114,6 +125,9 @@ def download_video(url: str, job_id: str, progress_cb: Callable[[int], None]) ->
         "check_formats": True,   # probe all candidates, skip DRM/unavailable ones
         # ────────────────────────────────────────────────────────────────────
     }
+    
+    if cookie_file_path:
+        ydl_opts["cookiefile"] = cookie_file_path
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=True)
