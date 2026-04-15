@@ -369,7 +369,7 @@ export default function Hero({ onGetStarted }) {
                 <span className="rotating-border" />
                 ✨ Generate PDF Free
               </button>
-              <a href="https://github.com" target="_blank" rel="noreferrer" className="btn-hero-ghost">
+              <a href="https://github.com/Anupthakurr/FrameSense-AI" target="_blank" rel="noreferrer" className="btn-hero-ghost">
                 ⭐ Star on GitHub
               </a>
             </div>
