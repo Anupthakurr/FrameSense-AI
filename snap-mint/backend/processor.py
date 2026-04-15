@@ -95,9 +95,11 @@ def download_video(url: str, job_id: str, progress_cb: Callable[[int], None]) ->
         # ── Fix for HTTP 403 Forbidden ──────────────────────────────────────
         "extractor_args": {
             "youtube": {
-                "player_client": ["ios", "android", "web"],
+                "player_client": ["android", "ios"],
+                "player_skip": ["web"]
             }
         },
+        "source_address": "0.0.0.0",
         "http_headers": {
             "User-Agent": (
                 "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) "
