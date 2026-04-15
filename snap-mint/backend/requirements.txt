@@ -2,7 +2,7 @@ flask
 flask-cors
 gunicorn
 yt-dlp
-scenedetect[opencv]
-opencv-python
+scenedetect[opencv-headless]
+opencv-python-headless
 Pillow
 fpdf2
