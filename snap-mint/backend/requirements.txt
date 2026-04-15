@@ -1,0 +1,8 @@
+flask
+flask-cors
+gunicorn
+yt-dlp
+scenedetect[opencv]
+opencv-python
+Pillow
+fpdf2

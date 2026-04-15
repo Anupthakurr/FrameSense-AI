@@ -1,0 +1,25 @@
+# SnapMint — Root gitignore
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+.env
+.venv
+venv/
+env/
+
+# Temp files
+/tmp/
+snapmint_jobs/
+
+# Node
+node_modules/
+dist/
+.DS_Store
+
+# IDE
+.vscode/settings.json
+*.swp

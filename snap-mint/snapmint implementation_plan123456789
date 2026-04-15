@@ -1,0 +1,198 @@
+# SnapMint — YouTube Scene Screenshot to PDF (v2)
+
+## Overview
+
+**SnapMint**: paste a YouTube URL → **smart scene detection** → **filter out "blocked" frames** where a person is blocking center content → capture clean content screenshots with timestamps → serve as a downloadable PDF.
+
+---
+
+## Architecture
+
+```
+snap-mint/
+├── backend/                  ← Python Flask API (deploy: Railway)
+│   ├── app.py                ← Flask routes + SSE streaming
+│   ├── processor.py          ← pipeline: download → detect → filter → extract → PDF
+│   ├── person_filter.py      ← HOG person detector, center-zone logic
+│   ├── requirements.txt
+│   ├── nixpacks.toml         ← Railway: install FFmpeg
+│   └── Procfile              ← Railway: gunicorn start command
+└── frontend/                 ← Vite + React (deploy: Vercel)
+    ├── src/
+    │   ├── App.jsx
+    │   ├── components/
+    │   │   ├── Hero.jsx
+    │   │   ├── UrlInput.jsx
+    │   │   ├── ProgressStream.jsx
+    │   │   ├── SceneGallery.jsx
+    │   │   └── PdfDownload.jsx
+    │   └── index.css
+    ├── vercel.json
+    └── ...
+```
+
+---
+
+## Proposed Changes
+
+### 🔴 NEW FEATURE: Center-Person Filtering
+
+#### The Problem
+For lecture/tutorial/presentation videos, the presenter often stands *in front of* the slide/whiteboard. In those frames, the content is blocked — not useful to screenshot.
+We want to screenshot **only when** the content area (center) is clear.
+
+#### Logic in `person_filter.py`
+```
+Frame width divided into 3 zones:
+┌──────────┬────────────┬──────────┐
+│  LEFT    │   CENTER   │  RIGHT   │
+│  (0–33%) │ (33%–66%) │ (66%–100%)│
+└──────────┴────────────┴──────────┘
+
+Person detected in CENTER zone → ❌ SKIP frame
+Person detected only in LEFT or RIGHT → ✅ TAKE screenshot
+No person detected → ✅ TAKE screenshot
+```
+
+#### Implementation
+- **Detector**: OpenCV HOG + SVM people detector (built-in, no model download)
+- **Confidence threshold**: only count detections with `weight > 0.5` (filter noise)
+- **Center zone**: middle 40% of frame width (configurable)
+- **Fallback**: if HOG misses obviously centered people, also run face detection as a secondary check
+
+---
+
+### Backend (Python Flask)
+
+#### [NEW] `backend/requirements.txt`
+```
+flask
+flask-cors
+gunicorn
+yt-dlp
+scenedetect[opencv]
+opencv-python
+Pillow
+fpdf2
+```
+
+#### [NEW] `backend/nixpacks.toml`
+```toml
+[phases.setup]
+aptPkgs = ["ffmpeg"]
+```
+
+#### [NEW] `backend/Procfile`
+```
+web: gunicorn app:app
+```
+
+#### [NEW] `backend/person_filter.py`
+- `is_person_centered(frame, center_zone=0.40)` → `bool`
+  - Runs HOG detector on a downscaled copy (for speed)
+  - Returns `True` if any high-confidence detection is centered
+  - Also runs OpenCV face cascade as secondary check
+
+#### [NEW] `backend/processor.py`
+Pipeline:
+1. **Download** video with `yt-dlp` → temp file in `/tmp`
+2. **Detect scenes** with `ContentDetector` (threshold configurable, default 27)
+3. **For each scene midpoint frame**:
+   - Run `is_person_centered()` check
+   - If centered person → skip (log as "filtered")
+   - Else → capture frame
+4. **Stamp timestamp** using Pillow `ImageDraw`
+5. **Build PDF** using `fpdf2` — one scene per page
+6. **Cleanup** temp video after PDF generated
+
+#### [NEW] `backend/app.py`
+| Route | Method | Description |
+|---|---|---|
+| `POST /api/process` | POST | Start job, returns `job_id` |
+| `GET /api/progress/<job_id>` | SSE | Stream progress events |
+| `GET /api/scenes/<job_id>` | GET | Scene thumbnails (base64 JSON) |
+| `GET /api/download/<job_id>` | GET | Serve PDF file |
+| `DELETE /api/cleanup/<job_id>` | DELETE | Remove temp files |
+
+- Uses Python `threading` for async job processing
+- SSE `progress` events: `downloading` → `detecting` → `filtering` → `extracting` → `building_pdf` → `done`
+- Auto-cleanup temp files 10 minutes after download
+
+---
+
+### Frontend (Vite + React)
+
+#### [NEW] `frontend/vercel.json`
+```json
+{ "rewrites": [{ "source": "/(.*)", "destination": "/" }] }
+```
+
+#### Design System
+- **Colors**: Deep space `#050914` bg → `#6366f1` indigo primary → `#f59e0b` amber accent
+- **Font**: Inter via Google Fonts
+- **Style**: Glassmorphism cards, smooth gradient hero animation, progress step tracker
+
+#### Key Components
+| Component | Feature |
+|---|---|
+| `Hero.jsx` | Animated gradient headline, tagline, CTA arrow |
+| `UrlInput.jsx` | URL paste + **threshold slider** + toggle for person filter |
+| `ProgressStream.jsx` | Live 5-step tracker (Download/Detect/Filter/Extract/PDF) |
+| `SceneGallery.jsx` | Masonry grid thumbnails with timestamps; skipped frames shown as dimmed |
+| `PdfDownload.jsx` | Stats card (X scenes captured, Y filtered) + animated download button |
+
+---
+
+## Deployment Plan
+
+| Service | Platform | Notes |
+|---|---|---|
+| **Backend** | Railway | FFmpeg via nixpacks, temp files in `/tmp`, auto-cleanup |
+| **Frontend** | Vercel | SPA routing with `vercel.json` |
+
+### Environment Variables (Railway)
+```
+CORS_ORIGINS=https://your-vercel-app.vercel.app
+MAX_VIDEO_DURATION=3600   # max 1 hour video
+CLEANUP_DELAY_MINUTES=10
+```
+
+---
+
+## User Experience Flow
+```
+[Paste YouTube URL]
+[Configure: threshold slider, person-filter toggle ON/OFF]
+[Click "Generate PDF"]
+     ↓
+[Live Progress]
+📥 Downloading video... 67%
+🔍 Detecting scenes... 12 scenes found
+🧠 Smart filtering... 4 frames skipped (person blocking center)
+🖼️ Extracting screenshots... 8 captured
+📄 Building PDF...
+✅ Done!
+     ↓
+[Scene Gallery]
+  ✅ Scene 1 — 00:02:14  (green border)
+  ⛔ Scene 3 — 00:05:30  (dimmed, "Person in frame")
+  ✅ Scene 5 — 00:08:12  (green border)
+     ↓
+[Download PDF] — shows: "8 scenes captured • 4 filtered"
+```
+
+---
+
+## Verification Plan
+
+### Local Testing
+1. `cd backend && python app.py`
+2. `cd frontend && npm run dev`
+3. Test with a known lecture video (e.g., a TED Talk where presenter walks around)
+4. Verify filtered vs captured scenes are correctly classified
+
+### Deployment Testing
+1. Push to GitHub → Railway auto-deploys backend
+2. Push frontend → Vercel auto-deploys
+3. Update `CORS_ORIGINS` on Railway with Vercel URL
+4. Full end-to-end test on deployed URLs
