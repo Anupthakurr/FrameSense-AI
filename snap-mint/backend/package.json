@@ -1,0 +1,6 @@
+{
+  "name": "snapmint-backend-js",
+  "version": "1.0.0",
+  "description": "Dummy package to trigger Nixpacks Node installation",
+  "dependencies": {}
+}
