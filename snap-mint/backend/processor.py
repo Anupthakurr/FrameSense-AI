@@ -104,31 +104,31 @@ def download_video(url: str, job_id: str, progress_cb: Callable[[int], None]) ->
             "Accept-Language": "en-US,en;q=0.9",
         },
         # ── Client selection ────────────────────────────────────────────────
-        # tv — YouTube TV client:
-        #   • Accepts browser cookies (needed to bypass Railway IP bot-detection)
-        #   • Returns direct video URLs (no SABR enforcement)
-        #
-        # DO NOT add "web", "web_safari", or "mweb" —
-        #   require n-challenge or GVS PO Token
+        # web client:
+        #   • Highest quality DASH streams (1080p+)
+        #   • The most resilient feature set, requiring PO Token and Cookies 
+        #     to bypass SABR if using datacenter IP.
         "extractor_args": {
             "youtube": {
-                "player_client": ["tv"],
+                "player_client": ["web"],
             }
         },
-        # tv_embedded returns DASH/MP4 streams. Cascade: best mp4 → best available.
+        # Cascade: bestvideo/audio → best mp4 → best available.
         "format": "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
         "retries": 5,
         "fragment_retries": 5,
         "ignoreerrors": False,
         # MUST BE FALSE — True causes HEAD requests YouTube blocks with 403.
         "check_formats": False,
-        # Merge bestvideo+bestaudio streams into a single mp4 via ffmpeg.
         "merge_output_format": "mp4",
     }
 
+    proxy_url = os.getenv("PROXY_URL")
+    if proxy_url:
+        ydl_opts["proxy"] = proxy_url
+
     if cookie_file_path:
         ydl_opts["cookiefile"] = cookie_file_path
-
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=True)

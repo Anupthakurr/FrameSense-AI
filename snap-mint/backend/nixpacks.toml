@@ -1,6 +1,10 @@
 providers = ["python"]
 
 [phases.setup]
-# ffmpeg: needed by yt-dlp to merge bestvideo+bestaudio streams
-nixPkgs = ["ffmpeg"]
+nixPkgs = ["ffmpeg", "nodejs_20"]
 
+[phases.install]
+cmds = [
+  "pip install -r requirements.txt",
+  "npm install -g bgutil-ytdlp-pot-provider"
+]
