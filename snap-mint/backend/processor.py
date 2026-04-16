@@ -104,20 +104,15 @@ def download_video(url: str, job_id: str, progress_cb: Callable[[int], None]) ->
             "Accept-Language": "en-US,en;q=0.9",
         },
         # ── Client selection ────────────────────────────────────────────────
-        # tv_embedded — YouTube TV embedded client:
+        # tv — YouTube TV client:
         #   • Accepts browser cookies (needed to bypass Railway IP bot-detection)
-        #   • Does NOT require PO Token
-        #   • Does NOT require n-challenge JS solving
         #   • Returns direct video URLs (no SABR enforcement)
         #
         # DO NOT add "web", "web_safari", or "mweb" —
-        #   web/web_safari: require n-challenge (no JS runtime on Railway)
-        #   mweb:           requires GVS PO Token (unavailable without browser)
-        # DO NOT add "ios" or "android" —
-        #   they do not support cookies, causing "Sign in to confirm you're not a bot"
+        #   require n-challenge or GVS PO Token
         "extractor_args": {
             "youtube": {
-                "player_client": ["tv_embedded"],
+                "player_client": ["tv"],
             }
         },
         # tv_embedded returns DASH/MP4 streams. Cascade: best mp4 → best available.
