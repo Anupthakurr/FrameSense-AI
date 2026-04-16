@@ -1,4 +1,8 @@
 providers = ["python", "node"]
 
 [phases.setup]
-aptPkgs = ["ffmpeg"]
+# ffmpeg: needed by yt-dlp to merge bestvideo+bestaudio streams
+# nodejs: needed by yt-dlp to solve YouTube's JS n-challenge (signature decryption)
+#         Without a JS runtime, yt-dlp logs "JS runtimes: none" and some formats
+#         fail to download. Node is the most reliable option on Railway/Nixpacks.
+aptPkgs = ["ffmpeg", "nodejs"]
