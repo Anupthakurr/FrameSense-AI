@@ -6,3 +6,13 @@ providers = ["python", "node"]
 #         Without a JS runtime, yt-dlp logs "JS runtimes: none" and some formats
 #         fail to download. Node is the most reliable option on Railway/Nixpacks.
 aptPkgs = ["ffmpeg", "nodejs"]
+
+[phases.install]
+cmds = [
+  "pip install -r requirements.txt",
+  # bgutil-ytdlp-pot-provider: Node.js server that generates YouTube Proof-of-Origin
+  # (PO) Tokens by executing YouTube's own botguard JavaScript. Required to bypass
+  # SABR streaming enforcement from Railway's data-center IP addresses.
+  # yt-dlp-get-pot (pip) bridges yt-dlp <-> this server automatically.
+  "npm install -g bgutil-ytdlp-pot-provider"
+]

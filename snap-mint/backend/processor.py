@@ -104,29 +104,22 @@ def download_video(url: str, job_id: str, progress_cb: Callable[[int], None]) ->
             "Accept-Language": "en-US,en;q=0.9",
         },
         # ── Client selection ────────────────────────────────────────────────
-        # tv_embedded — YouTube TV embedded client:
-        #   • Accepts browser cookies (needed to bypass Railway IP bot-detection)
-        #   • Does NOT require PO Token
-        #   • Does NOT require n-challenge JS solving
-        #   • Returns direct video URLs (no SABR enforcement)
+        # With bgutil-ytdlp-pot-provider running on localhost:4416 and the
+        # yt-dlp-get-pot plugin installed, PO Tokens are generated automatically.
+        # This allows us to use the standard "web" client which:
+        #   • Returns the highest quality DASH streams (1080p+)
+        #   • Is the most stable and feature-complete client
+        #   • Works correctly once PO tokens are supplied
         #
-        # android — YouTube Android API client (secondary fallback):
-        #   • Also accepts cookies
-        #   • Returns direct MP4 URLs no JS needed
-        #
-        # DO NOT add "web", "web_safari", or "mweb" —
-        #   web/web_safari: require n-challenge (no JS runtime on Railway)
-        #   mweb:           requires GVS PO Token (unavailable without browser)
-        # DO NOT add "ios" —
-        #   ios: does not support browser cookies → triggered "Sign in to confirm
-        #        you're not a bot" because Railway's IP can't authenticate.
+        # "android" is the secondary fallback — direct MP4, no PO token needed,
+        # and generally avoids SABR enforcement even without tokens.
         "extractor_args": {
             "youtube": {
-                "player_client": ["tv_embedded", "android"],
+                "player_client": ["web", "android"],
             }
         },
-        # tv_embedded returns DASH/MP4 streams; android returns direct MP4.
-        # Cascade: best mp4 → best available.
+        # Best quality: separate video+audio merged by ffmpeg.
+        # Falls back to best single-file mp4, then any available format.
         "format": "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
         "retries": 5,
         "fragment_retries": 5,
