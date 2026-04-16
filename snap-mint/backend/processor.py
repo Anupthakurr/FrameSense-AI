@@ -103,13 +103,6 @@ def download_video(url: str, job_id: str, progress_cb: Callable[[int], None]) ->
         "quiet": True,
         "no_warnings": True,
         "progress_hooks": [yt_hook],
-        # ── Fix for HTTP 403 Forbidden ──────────────────────────────────────
-        "extractor_args": {
-            "youtube": {
-                "player_client": ["android", "ios"],
-                "player_skip": ["web"]
-            }
-        },
         "source_address": "0.0.0.0",
         "http_headers": {
             "User-Agent": (
