@@ -2,17 +2,12 @@ providers = ["python", "node"]
 
 [phases.setup]
 # ffmpeg: needed by yt-dlp to merge bestvideo+bestaudio streams
-# nodejs: needed by yt-dlp to solve YouTube's JS n-challenge (signature decryption)
-#         Without a JS runtime, yt-dlp logs "JS runtimes: none" and some formats
-#         fail to download. Node is the most reliable option on Railway/Nixpacks.
-aptPkgs = ["ffmpeg", "nodejs"]
+# nodejs_20: needed by bgutil to generate PO tokens, and by yt-dlp for JS evaluation
+nixPkgs = ["ffmpeg", "nodejs_20"]
 
 [phases.install]
 cmds = [
   "pip install -r requirements.txt",
-  # bgutil-ytdlp-pot-provider: Node.js server that generates YouTube Proof-of-Origin
-  # (PO) Tokens by executing YouTube's own botguard JavaScript. Required to bypass
-  # SABR streaming enforcement from Railway's data-center IP addresses.
-  # yt-dlp-get-pot (pip) bridges yt-dlp <-> this server automatically.
+  # Install the PO Token provider globally using the nodejs_20 npm
   "npm install -g bgutil-ytdlp-pot-provider"
 ]
