@@ -101,7 +101,7 @@ def download_video(url: str, job_id: str, progress_cb: Callable[[int], None]) ->
         "retries": 5,
         "fragment_retries": 5,
         "ignoreerrors": False,
-        "check_formats": True,   # probe all candidates, skip DRM/unavailable ones
+        "check_formats": False,  # MUST BE FALSE! True causes yt-dlp to send HEAD requests which YouTube blocks with 403, causing yt-dlp to wrongly assume all formats are unavailable!
         # ────────────────────────────────────────────────────────────────────
     }
     
