@@ -70,19 +70,23 @@ def download_video(url: str, job_id: str, progress_cb: Callable[[int], None]) ->
             progress_cb(100)
 
     # ── Cookie handling ───────────────────────────────────────────────────────
-    # NOTE: We intentionally do NOT pass a cookiefile to yt-dlp.
+    # Railway server IPs are recognized data-center addresses. YouTube requires
+    # a signed-in session to confirm the request is not a bot. We pass browser
+    # cookies (stored in the YOUTUBE_COOKIES Railway Variable) to authenticate.
     #
-    # The ios client (our primary) is SKIPPED by yt-dlp when a cookiefile is
-    # present — it logs "Skipping client ios since it does not support cookies".
-    # Passing cookies causes ios to be silently bypassed, falling back to clients
-    # that then fail with 403 / PO Token / SABR errors.
-    #
-    # ios uses Apple's private YouTube API with its own auth mechanism (not
-    # browser cookies), so browser cookies are neither usable nor needed.
-    # tv_embedded (our secondary) also works fine without cookies for public videos.
-    #
-    # If age-gated / private video support is ever needed, handle it separately
-    # with a youtube:player_client=tv_embedded-only path that accepts cookies.
+    # IMPORTANT: cookies can only be passed to clients that support them.
+    # The ios client does NOT support browser cookies (yt-dlp skips it with
+    # "Skipping client ios since it does not support cookies").
+    # We therefore use tv_embedded + android — both accept cookies and do NOT
+    # require PO tokens or n-challenge JS solving.
+    cookies_content = os.getenv("YOUTUBE_COOKIES")
+    cookie_file_path = None
+    if cookies_content:
+        cookie_file_path = os.path.join(tempfile.gettempdir(), "youtube_cookies.txt")
+        if not cookies_content.startswith("# Netscape"):
+            cookies_content = "# Netscape HTTP Cookie File\n" + cookies_content
+        with open(cookie_file_path, "w", encoding="utf-8") as f:
+            f.write(cookies_content)
 
     ydl_opts = {
         "outtmpl": output_path,
@@ -100,38 +104,42 @@ def download_video(url: str, job_id: str, progress_cb: Callable[[int], None]) ->
             "Accept-Language": "en-US,en;q=0.9",
         },
         # ── Client selection ────────────────────────────────────────────────
-        # Use the iOS client as primary. It contacts Apple's private YouTube
-        # API endpoint and returns pre-merged HLS streams, which means:
-        #   • No n-challenge / JS runtime required
-        #   • No SABR streaming (direct downloadable URLs returned)
-        #   • No PO Token required
-        #   • Completely avoids the web_safari / web_safari SABR path
+        # tv_embedded — YouTube TV embedded client:
+        #   • Accepts browser cookies (needed to bypass Railway IP bot-detection)
+        #   • Does NOT require PO Token
+        #   • Does NOT require n-challenge JS solving
+        #   • Returns direct video URLs (no SABR enforcement)
         #
-        # tv_embedded (YouTube TV embedded) is the secondary fallback:
-        #   • Does not require PO Token (unlike mweb which now mandates it)
-        #   • Does not require n-challenge JS solving
-        #   • Returns direct video URLs without SABR enforcement
+        # android — YouTube Android API client (secondary fallback):
+        #   • Also accepts cookies
+        #   • Returns direct MP4 URLs no JS needed
         #
         # DO NOT add "web", "web_safari", or "mweb" —
         #   web/web_safari: require n-challenge (no JS runtime on Railway)
-        #   mweb: requires GVS PO Token (not available without browser session)
+        #   mweb:           requires GVS PO Token (unavailable without browser)
+        # DO NOT add "ios" —
+        #   ios: does not support browser cookies → triggered "Sign in to confirm
+        #        you're not a bot" because Railway's IP can't authenticate.
         "extractor_args": {
             "youtube": {
-                "player_client": ["ios", "tv_embedded"],
+                "player_client": ["tv_embedded", "android"],
             }
         },
-        # ios returns pre-merged HLS (hls-*) streams — "best" picks the
-        # highest quality available. mp4 fallback covers tv_embedded formats.
-        "format": "best[ext=mp4]/best",
+        # tv_embedded returns DASH/MP4 streams; android returns direct MP4.
+        # Cascade: best mp4 → best available.
+        "format": "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
         "retries": 5,
         "fragment_retries": 5,
         "ignoreerrors": False,
         # MUST BE FALSE — True causes HEAD requests YouTube blocks with 403.
         "check_formats": False,
-        # Merge streams into mp4 via ffmpeg when needed.
+        # Merge bestvideo+bestaudio streams into a single mp4 via ffmpeg.
         "merge_output_format": "mp4",
     }
-    # cookiefile is intentionally NOT set — see comment above.
+
+    if cookie_file_path:
+        ydl_opts["cookiefile"] = cookie_file_path
+
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=True)
