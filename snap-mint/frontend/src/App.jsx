@@ -5,8 +5,8 @@ import ProgressStream from './components/ProgressStream'
 import SceneGallery from './components/SceneGallery'
 import PdfDownload from './components/PdfDownload'
 
-// Backend URL — override via VITE_API_URL env var for production
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000'
+// Backend URL: Uses empty string in production to proxy via Vercel, enabling ISP block bypass
+const API_BASE = import.meta.env.DEV ? 'http://localhost:5000' : ''
 
 export default function App() {
   const [phase, setPhase] = useState('idle') // idle | processing | done | error
