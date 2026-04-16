@@ -92,41 +92,40 @@ def download_video(url: str, job_id: str, progress_cb: Callable[[int], None]) ->
         "progress_hooks": [yt_hook],
         "source_address": "0.0.0.0",
         "http_headers": {
-            # Use a standard desktop Chrome UA — the mobile Safari UA was
-            # triggering YouTube's web_safari client which forces SABR-only
-            # streaming (no direct download URLs), causing ExtractorError.
             "User-Agent": (
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                 "AppleWebKit/537.36 (KHTML, like Gecko) "
                 "Chrome/124.0.0.0 Safari/537.36"
             ),
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
             "Accept-Language": "en-US,en;q=0.9",
-            "Sec-Fetch-Mode": "navigate",
         },
-        # Format cascade: prefer a merged mp4, fall all the way back to 'best'
-        # so we NEVER hit "format not available" on restricted environments.
+        # Format cascade — never hits "format not available".
         "format": (
             "bestvideo[ext=mp4]+bestaudio[ext=m4a]/"
             "bestvideo+bestaudio/"
             "best[ext=mp4]/"
             "best"
         ),
-        # Exclude web_safari — YouTube forces SABR streaming for this client
-        # when no JS runtime is available, returning only images (no video URLs).
-        # Using default minus web_safari gives us web, android, tv_embedded etc.
+        # ── Client selection ────────────────────────────────────────────────
+        # IMPORTANT: Do NOT use CLI exclusion syntax ("default,-web_safari") here —
+        # the Python API does not support it and logs "Skipping unsupported client".
+        # Instead, list explicit clients:
+        #
+        #   android      — returns direct mp4 URLs, no JS/PO Token needed, no SABR
+        #   tv_embedded  — embedded TV client, also SABR-free and no n-challenge
+        #
+        # Both bypass the web_safari SABR-streaming issue entirely.
         "extractor_args": {
             "youtube": {
-                "player_client": ["default,-web_safari"],
+                "player_client": ["android", "tv_embedded"],
             }
         },
         "retries": 5,
         "fragment_retries": 5,
         "ignoreerrors": False,
-        # MUST BE FALSE — True causes HEAD requests YouTube blocks with 403,
-        # making yt-dlp wrongly mark all formats as unavailable.
+        # MUST BE FALSE — True causes HEAD requests YouTube blocks with 403.
         "check_formats": False,
-        # Merge formats with ffmpeg when available (installed via nixpacks)
+        # Merge bestvideo+bestaudio into a single mp4 via ffmpeg.
         "merge_output_format": "mp4",
     }
 
