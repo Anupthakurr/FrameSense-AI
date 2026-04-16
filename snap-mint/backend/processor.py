@@ -99,27 +99,27 @@ def download_video(url: str, job_id: str, progress_cb: Callable[[int], None]) ->
             ),
             "Accept-Language": "en-US,en;q=0.9",
         },
-        # Format cascade — never hits "format not available".
-        "format": (
-            "bestvideo[ext=mp4]+bestaudio[ext=m4a]/"
-            "bestvideo+bestaudio/"
-            "best[ext=mp4]/"
-            "best"
-        ),
         # ── Client selection ────────────────────────────────────────────────
-        # IMPORTANT: Do NOT use CLI exclusion syntax ("default,-web_safari") here —
-        # the Python API does not support it and logs "Skipping unsupported client".
-        # Instead, list explicit clients:
+        # Use the iOS client as primary. It contacts Apple's private YouTube
+        # API endpoint and returns pre-merged HLS streams, which means:
+        #   • No n-challenge / JS runtime required
+        #   • No SABR streaming (direct downloadable URLs returned)
+        #   • No PO Token required
+        #   • Completely avoids the web_safari / web_safari SABR path
         #
-        #   android      — returns direct mp4 URLs, no JS/PO Token needed, no SABR
-        #   tv_embedded  — embedded TV client, also SABR-free and no n-challenge
+        # mweb (mobile web) is a lightweight secondary fallback that also
+        # tends to avoid SABR enforcement without needing a JS runtime.
         #
-        # Both bypass the web_safari SABR-streaming issue entirely.
+        # DO NOT add "web" or "web_safari" — both require n-challenge
+        # solving which fails on Railway (no JS binary available).
         "extractor_args": {
             "youtube": {
-                "player_client": ["android", "tv_embedded"],
+                "player_client": ["ios", "mweb"],
             }
         },
+        # iOS returns pre-merged HLS (hls-*) streams — "best" picks the
+        # highest quality one. mp4 fallback covers any non-HLS formats.
+        "format": "best[ext=mp4]/best",
         "retries": 5,
         "fragment_retries": 5,
         "ignoreerrors": False,
