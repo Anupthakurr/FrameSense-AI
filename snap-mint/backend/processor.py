@@ -104,22 +104,23 @@ def download_video(url: str, job_id: str, progress_cb: Callable[[int], None]) ->
             "Accept-Language": "en-US,en;q=0.9",
         },
         # ── Client selection ────────────────────────────────────────────────
-        # With bgutil-ytdlp-pot-provider running on localhost:4416 and the
-        # yt-dlp-get-pot plugin installed, PO Tokens are generated automatically.
-        # This allows us to use the standard "web" client which:
-        #   • Returns the highest quality DASH streams (1080p+)
-        #   • Is the most stable and feature-complete client
-        #   • Works correctly once PO tokens are supplied
+        # tv_embedded — YouTube TV embedded client:
+        #   • Accepts browser cookies (needed to bypass Railway IP bot-detection)
+        #   • Does NOT require PO Token
+        #   • Does NOT require n-challenge JS solving
+        #   • Returns direct video URLs (no SABR enforcement)
         #
-        # "android" is the secondary fallback — direct MP4, no PO token needed,
-        # and generally avoids SABR enforcement even without tokens.
+        # DO NOT add "web", "web_safari", or "mweb" —
+        #   web/web_safari: require n-challenge (no JS runtime on Railway)
+        #   mweb:           requires GVS PO Token (unavailable without browser)
+        # DO NOT add "ios" or "android" —
+        #   they do not support cookies, causing "Sign in to confirm you're not a bot"
         "extractor_args": {
             "youtube": {
-                "player_client": ["web", "android"],
+                "player_client": ["tv_embedded"],
             }
         },
-        # Best quality: separate video+audio merged by ffmpeg.
-        # Falls back to best single-file mp4, then any available format.
+        # tv_embedded returns DASH/MP4 streams. Cascade: best mp4 → best available.
         "format": "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
         "retries": 5,
         "fragment_retries": 5,

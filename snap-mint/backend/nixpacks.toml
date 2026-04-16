@@ -1,13 +1,6 @@
-providers = ["python", "node"]
+providers = ["python"]
 
 [phases.setup]
 # ffmpeg: needed by yt-dlp to merge bestvideo+bestaudio streams
-# nodejs_20: needed by bgutil to generate PO tokens, and by yt-dlp for JS evaluation
-nixPkgs = ["ffmpeg", "nodejs_20"]
+nixPkgs = ["ffmpeg"]
 
-[phases.install]
-cmds = [
-  "pip install -r requirements.txt",
-  # Install the PO Token provider globally using the nodejs_20 npm
-  "npm install -g bgutil-ytdlp-pot-provider"
-]
