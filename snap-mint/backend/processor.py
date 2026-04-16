@@ -86,8 +86,9 @@ def download_video(url: str, job_id: str, progress_cb: Callable[[int], None]) ->
 
     ydl_opts = {
         "outtmpl": output_path,
-        "quiet": True,
-        "no_warnings": True,
+        "quiet": False,
+        "verbose": True,
+        "no_warnings": False,
         "progress_hooks": [yt_hook],
         "source_address": "0.0.0.0",
         "http_headers": {
