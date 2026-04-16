@@ -1,7 +1,7 @@
 flask
 flask-cors
 gunicorn
-yt-dlp
+yt-dlp>=2025.10.0
 scenedetect[opencv-headless]
 opencv-python-headless
 Pillow

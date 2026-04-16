@@ -73,15 +73,7 @@ def download_video(url: str, job_id: str, progress_cb: Callable[[int], None]) ->
     # Video-only = no FFmpeg needed, higher resolution.
     # Cascade from best quality down to any available, ending with 'best'
     # as an absolute fallback so we never get "format not available".
-    _fmt = (
-        "bestvideo[ext=mp4][height<=1080]/"
-        "bestvideo[height<=1080]/"
-        "bestvideo[ext=mp4]/"
-        "bestvideo/"
-        "best[ext=mp4]/"
-        "best"
-    )
-    # ────────────────────────────────────────────────────────────────────────
+    _fmt = "b"
 
     # iOS client bypasses YouTube's PO token / 403 restrictions reliably.
     # Android is tried as fallback. Both avoid the "HTTP 403 Forbidden" error
