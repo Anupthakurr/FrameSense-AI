@@ -69,20 +69,20 @@ def download_video(url: str, job_id: str, progress_cb: Callable[[int], None]) ->
         elif d["status"] == "finished":
             progress_cb(100)
 
-    # ── Format selection ────────────────────────────────────────────────────
-    # Video-only = no FFmpeg needed, higher resolution.
-    # Cascade from best quality down to any available, ending with 'best'
-    # as an absolute fallback so we never get "format not available".
-    # ── Handle YouTube Cookies for Bot Bypass ────────────────────────────────
-    cookies_content = os.getenv("YOUTUBE_COOKIES")
-    cookie_file_path = None
-    if cookies_content:
-        cookie_file_path = os.path.join(tempfile.gettempdir(), "youtube_cookies.txt")
-        # Ensure it has the # Netscape HTTP Cookie File header needed by yt-dlp
-        if not cookies_content.startswith("# Netscape"):
-            cookies_content = "# Netscape HTTP Cookie File\n" + cookies_content
-        with open(cookie_file_path, "w", encoding="utf-8") as f:
-            f.write(cookies_content)
+    # ── Cookie handling ───────────────────────────────────────────────────────
+    # NOTE: We intentionally do NOT pass a cookiefile to yt-dlp.
+    #
+    # The ios client (our primary) is SKIPPED by yt-dlp when a cookiefile is
+    # present — it logs "Skipping client ios since it does not support cookies".
+    # Passing cookies causes ios to be silently bypassed, falling back to clients
+    # that then fail with 403 / PO Token / SABR errors.
+    #
+    # ios uses Apple's private YouTube API with its own auth mechanism (not
+    # browser cookies), so browser cookies are neither usable nor needed.
+    # tv_embedded (our secondary) also works fine without cookies for public videos.
+    #
+    # If age-gated / private video support is ever needed, handle it separately
+    # with a youtube:player_client=tv_embedded-only path that accepts cookies.
 
     ydl_opts = {
         "outtmpl": output_path,
@@ -107,30 +107,31 @@ def download_video(url: str, job_id: str, progress_cb: Callable[[int], None]) ->
         #   • No PO Token required
         #   • Completely avoids the web_safari / web_safari SABR path
         #
-        # mweb (mobile web) is a lightweight secondary fallback that also
-        # tends to avoid SABR enforcement without needing a JS runtime.
+        # tv_embedded (YouTube TV embedded) is the secondary fallback:
+        #   • Does not require PO Token (unlike mweb which now mandates it)
+        #   • Does not require n-challenge JS solving
+        #   • Returns direct video URLs without SABR enforcement
         #
-        # DO NOT add "web" or "web_safari" — both require n-challenge
-        # solving which fails on Railway (no JS binary available).
+        # DO NOT add "web", "web_safari", or "mweb" —
+        #   web/web_safari: require n-challenge (no JS runtime on Railway)
+        #   mweb: requires GVS PO Token (not available without browser session)
         "extractor_args": {
             "youtube": {
-                "player_client": ["ios", "mweb"],
+                "player_client": ["ios", "tv_embedded"],
             }
         },
-        # iOS returns pre-merged HLS (hls-*) streams — "best" picks the
-        # highest quality one. mp4 fallback covers any non-HLS formats.
+        # ios returns pre-merged HLS (hls-*) streams — "best" picks the
+        # highest quality available. mp4 fallback covers tv_embedded formats.
         "format": "best[ext=mp4]/best",
         "retries": 5,
         "fragment_retries": 5,
         "ignoreerrors": False,
         # MUST BE FALSE — True causes HEAD requests YouTube blocks with 403.
         "check_formats": False,
-        # Merge bestvideo+bestaudio into a single mp4 via ffmpeg.
+        # Merge streams into mp4 via ffmpeg when needed.
         "merge_output_format": "mp4",
     }
-
-    if cookie_file_path:
-        ydl_opts["cookiefile"] = cookie_file_path
+    # cookiefile is intentionally NOT set — see comment above.
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=True)
