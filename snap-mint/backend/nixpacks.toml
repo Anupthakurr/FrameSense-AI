@@ -1,2 +1,4 @@
+providers = ["python", "node"]
+
 [phases.setup]
-aptPkgs = ["ffmpeg", "nodejs"]
+aptPkgs = ["ffmpeg"]
