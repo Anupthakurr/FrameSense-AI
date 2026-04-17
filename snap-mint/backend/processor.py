@@ -70,15 +70,9 @@ def download_video(url: str, job_id: str, progress_cb: Callable[[int], None]) ->
             progress_cb(100)
 
     # ── Cookie handling ───────────────────────────────────────────────────────
-    # Railway server IPs are recognized data-center addresses. YouTube requires
-    # a signed-in session to confirm the request is not a bot. We pass browser
-    # cookies (stored in the YOUTUBE_COOKIES Railway Variable) to authenticate.
-    #
-    # IMPORTANT: cookies can only be passed to clients that support them.
-    # The ios client does NOT support browser cookies (yt-dlp skips it with
-    # "Skipping client ios since it does not support cookies").
-    # We therefore use tv_embedded + android — both accept cookies and do NOT
-    # require PO tokens or n-challenge JS solving.
+    # Optional: pass YouTube cookies via YOUTUBE_COOKIES env var.
+    # With a residential proxy, cookies are typically not required for
+    # public videos, but they help with age-gated or region-locked content.
     cookies_content = os.getenv("YOUTUBE_COOKIES")
     cookie_file_path = None
     if cookies_content:
@@ -88,6 +82,21 @@ def download_video(url: str, job_id: str, progress_cb: Callable[[int], None]) ->
         with open(cookie_file_path, "w", encoding="utf-8") as f:
             f.write(cookies_content)
 
+    # ── Build extractor_args ─────────────────────────────────────────────────
+    # Use the standard "web" client — best quality DASH streams.
+    # With a residential proxy, YouTube sees a home IP so SABR/PO restrictions
+    # are not enforced. PO_TOKEN and VISITOR_DATA are optional overrides.
+    yt_extractor_args = {
+        "player_client": ["web"],
+    }
+
+    po_token = os.getenv("PO_TOKEN")
+    visitor_data = os.getenv("VISITOR_DATA")
+    if po_token:
+        yt_extractor_args["po_token"] = [po_token]
+    if visitor_data:
+        yt_extractor_args["visitor_data"] = [visitor_data]
+
     ydl_opts = {
         "outtmpl": output_path,
         "quiet": False,
@@ -95,6 +104,7 @@ def download_video(url: str, job_id: str, progress_cb: Callable[[int], None]) ->
         "no_warnings": False,
         "progress_hooks": [yt_hook],
         "source_address": "0.0.0.0",
+        "nocheckcertificate": True,
         "http_headers": {
             "User-Agent": (
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -103,26 +113,18 @@ def download_video(url: str, job_id: str, progress_cb: Callable[[int], None]) ->
             ),
             "Accept-Language": "en-US,en;q=0.9",
         },
-        # ── Client selection ────────────────────────────────────────────────
-        # web client:
-        #   • Highest quality DASH streams (1080p+)
-        #   • The most resilient feature set, requiring PO Token and Cookies 
-        #     to bypass SABR if using datacenter IP.
         "extractor_args": {
-            "youtube": {
-                "player_client": ["web"],
-            }
+            "youtube": yt_extractor_args,
         },
-        # Cascade: bestvideo/audio → best mp4 → best available.
         "format": "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
         "retries": 5,
         "fragment_retries": 5,
         "ignoreerrors": False,
-        # MUST BE FALSE — True causes HEAD requests YouTube blocks with 403.
         "check_formats": False,
         "merge_output_format": "mp4",
     }
 
+    # ── Residential proxy (required for Northflank / data-center IPs) ────────
     proxy_url = os.getenv("PROXY_URL")
     if proxy_url:
         ydl_opts["proxy"] = proxy_url
