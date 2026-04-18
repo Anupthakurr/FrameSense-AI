@@ -1,12 +1,15 @@
 # Use Python as the base
 FROM python:3.13-slim
 
-# 1. Install System Dependencies (ffmpeg for video, libGL for OpenCV)
-RUN apt-get update && apt-get install -y \
+# 1. Install System Dependencies
+# Note: libgl1 replaces the old libgl1-mesa-glx on modern Debian.
+# gnupg is required for the Node.js setup script.
+RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
-    libgl1-mesa-glx \
+    libgl1 \
     libglib2.0-0 \
     curl \
+    gnupg \
     && rm -rf /var/lib/apt/lists/*
 
 # 2. Install Node.js (Required for your bgutil PO Token engine)
