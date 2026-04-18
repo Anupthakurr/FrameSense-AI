@@ -65,14 +65,16 @@ def _generate_po_token() -> dict:
     """
     try:
         logger.info("[PO Token] Generating fresh token...")
-        # Since Northflank handles HTTPS proxies, we might need to pass the proxy to the CLI
         cmd = "youtube-po-token-generator"
+        env = os.environ.copy()
+        
         proxy = os.getenv("PROXY_URL")
         if proxy:
-            # For Windows or Linux, setting HTTPS_PROXY before the command works
-            cmd = f"HTTPS_PROXY={proxy} youtube-po-token-generator"
+            env["HTTPS_PROXY"] = proxy
+            env["HTTP_PROXY"] = proxy
+            env["GLOBAL_AGENT_HTTP_PROXY"] = proxy
             
-        out = subprocess.check_output(cmd, shell=True, text=True, timeout=60)
+        out = subprocess.check_output(cmd, env=env, shell=True, text=True, timeout=60)
         # Parse the JSON {"visitorData":"...","poToken":"..."}
         import json
         data = json.loads(out)
@@ -178,9 +180,6 @@ def download_video(url: str, job_id: str, progress_cb: Callable[[int], None]) ->
     proxy_url = os.getenv("PROXY_URL")
     if proxy_url:
         ydl_opts["proxy"] = proxy_url
-
-    if cookie_file_path:
-        ydl_opts["cookiefile"] = cookie_file_path
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=True)
