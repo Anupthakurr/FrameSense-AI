@@ -56,43 +56,6 @@ def cleanup_job(job_id: str):
 
 
 # ---------------------------------------------------------------------------
-# PO Token resolution — bgutil server (auto) → static env vars (manual)
-# ---------------------------------------------------------------------------
-BGUTIL_URL = "http://localhost:4416/generate"
-
-
-def _fetch_po_token() -> dict:
-    """
-    Try to get a fresh PO token from the bgutil server running on port 4416.
-    Falls back to static PO_TOKEN / VISITOR_DATA environment variables.
-    Returns dict with 'po_token' and 'visitor_data' keys (or empty dict).
-    """
-    # 1. Try the bgutil auto-refresh server
-    try:
-        req = Request(BGUTIL_URL, method="POST")
-        req.add_header("Content-Type", "application/json")
-        with urlopen(req, timeout=10) as resp:
-            data = json_mod.loads(resp.read().decode())
-            po = data.get("poToken", "")
-            vd = data.get("visitorData", "")
-            if po and vd:
-                logger.info("[PO Token] Fresh token from bgutil server ✓")
-                return {"po_token": po, "visitor_data": vd}
-    except (URLError, OSError, Exception) as e:
-        logger.info(f"[PO Token] bgutil server not available: {e}")
-
-    # 2. Fallback to static env vars
-    po = os.getenv("PO_TOKEN", "")
-    vd = os.getenv("VISITOR_DATA", "")
-    if po and vd:
-        logger.info("[PO Token] Using static env vars (PO_TOKEN / VISITOR_DATA)")
-        return {"po_token": po, "visitor_data": vd}
-
-    logger.warning("[PO Token] No tokens available — YouTube may block requests")
-    return {}
-
-
-# ---------------------------------------------------------------------------
 # Step 1: Download
 # ---------------------------------------------------------------------------
 def download_video(url: str, job_id: str, progress_cb: Callable[[int], None]) -> tuple[str, str]:
@@ -128,15 +91,10 @@ def download_video(url: str, job_id: str, progress_cb: Callable[[int], None]) ->
 
     # ── Build extractor_args ─────────────────────────────────────────────────
     # Use the standard "web" client — best quality DASH streams.
-    # _fetch_po_token() tries bgutil auto-refresh first, then static env vars.
+    # The yt-dlp plugin (bgutil-ytdlp-pot-provider) handles PO tokens per video automatically.
     yt_extractor_args = {
         "player_client": ["web"],
     }
-
-    token_info = _fetch_po_token()
-    if token_info:
-        yt_extractor_args["po_token"] = [f"web+{token_info['po_token']}"]
-        yt_extractor_args["visitor_data"] = [token_info["visitor_data"]]
 
     ydl_opts = {
         "outtmpl": output_path,
