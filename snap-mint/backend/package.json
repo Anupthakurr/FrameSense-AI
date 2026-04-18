@@ -2,7 +2,5 @@
   "name": "snapmint-backend-js",
   "version": "1.0.0",
   "description": "SnapMint PO Token Provider",
-  "dependencies": {
-    "bgutil-ytdlp-pot-provider": "latest"
-  }
+  "dependencies": {}
 }

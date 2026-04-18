@@ -19,11 +19,10 @@ import tempfile
 import shutil
 import base64
 import logging
+import subprocess
 from io import BytesIO
 from pathlib import Path
 from typing import Callable, List, Dict, Any, Optional
-from urllib.request import Request, urlopen
-from urllib.error import URLError
 
 import yt_dlp
 from PIL import Image, ImageDraw, ImageFont
@@ -53,6 +52,46 @@ def cleanup_job(job_id: str):
     job_dir = JOBS_DIR / job_id
     if job_dir.exists():
         shutil.rmtree(job_dir)
+
+
+# ---------------------------------------------------------------------------
+# PO Token resolution — Dynamic direct CLI call
+# ---------------------------------------------------------------------------
+def _generate_po_token() -> dict:
+    """
+    Generate a fresh PO Token dynamically by shelling out to the local
+    youtube-po-token-generator tool. Falls back to static env vars.
+    Returns dict with 'po_token' and 'visitor_data'.
+    """
+    try:
+        logger.info("[PO Token] Generating fresh token...")
+        # Since Northflank handles HTTPS proxies, we might need to pass the proxy to the CLI
+        cmd = "youtube-po-token-generator"
+        proxy = os.getenv("PROXY_URL")
+        if proxy:
+            # For Windows or Linux, setting HTTPS_PROXY before the command works
+            cmd = f"HTTPS_PROXY={proxy} youtube-po-token-generator"
+            
+        out = subprocess.check_output(cmd, shell=True, text=True, timeout=15)
+        # Parse the JSON {"visitorData":"...","poToken":"..."}
+        import json
+        data = json.loads(out)
+        po = data.get("poToken")
+        vd = data.get("visitorData")
+        if po and vd:
+            logger.info("[PO Token] Fresh token successfully generated ✓")
+            return {"po_token": po, "visitor_data": vd}
+    except Exception as e:
+        logger.warning(f"[PO Token] Failed to generate dynamically: {e}")
+
+    # Fallback
+    po = os.getenv("PO_TOKEN", "")
+    vd = os.getenv("VISITOR_DATA", "")
+    if po and vd:
+        logger.info("[PO Token] Using static fallback env vars")
+        return {"po_token": po, "visitor_data": vd}
+
+    return {}
 
 
 # ---------------------------------------------------------------------------
@@ -91,10 +130,15 @@ def download_video(url: str, job_id: str, progress_cb: Callable[[int], None]) ->
 
     # ── Build extractor_args ─────────────────────────────────────────────────
     # Use the standard "web" client — best quality DASH streams.
-    # The yt-dlp plugin (bgutil-ytdlp-pot-provider) handles PO tokens per video automatically.
+    # _generate_po_token() creates a unique per-video token on the fly.
     yt_extractor_args = {
         "player_client": ["web"],
     }
+    
+    token_info = _generate_po_token()
+    if token_info:
+        yt_extractor_args["po_token"] = [f"web+{token_info['po_token']}"]
+        yt_extractor_args["visitor_data"] = [token_info["visitor_data"]]
 
     ydl_opts = {
         "outtmpl": output_path,

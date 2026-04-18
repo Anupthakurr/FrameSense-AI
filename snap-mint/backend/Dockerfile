@@ -22,9 +22,8 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 4. Copy and Install Node Requirements (for the bgutil engine)
-COPY package*.json ./
-RUN npm install
+# 4. Install PO Token generator CLI globally
+RUN npm install -g youtube-po-token-generator
 
 # 5. Copy the rest of your code
 COPY . .
