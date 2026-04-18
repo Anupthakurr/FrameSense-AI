@@ -72,7 +72,7 @@ def _generate_po_token() -> dict:
             # For Windows or Linux, setting HTTPS_PROXY before the command works
             cmd = f"HTTPS_PROXY={proxy} youtube-po-token-generator"
             
-        out = subprocess.check_output(cmd, shell=True, text=True, timeout=15)
+        out = subprocess.check_output(cmd, shell=True, text=True, timeout=60)
         # Parse the JSON {"visitorData":"...","poToken":"..."}
         import json
         data = json.loads(out)
@@ -122,11 +122,15 @@ def download_video(url: str, job_id: str, progress_cb: Callable[[int], None]) ->
     cookies_content = os.getenv("YT_COOKIES_CONTENT")
     cookie_file_path = None
     if cookies_content:
-        cookie_file_path = os.path.join(tempfile.gettempdir(), "youtube_cookies.txt")
+        # Create a temporary file because yt-dlp requires a file path
+        # Use delete=False so the file survives until the download starts
         if not cookies_content.startswith("# Netscape"):
             cookies_content = "# Netscape HTTP Cookie File\n" + cookies_content
-        with open(cookie_file_path, "w", encoding="utf-8") as f:
-            f.write(cookies_content)
+        tmp = tempfile.NamedTemporaryFile(mode='w', encoding='utf-8', delete=False, suffix='.txt')
+        tmp.write(cookies_content)
+        tmp.close()
+        cookie_file_path = tmp.name
+        logger.info(f"✅ Identity Badge (Cookies) successfully injected.")
 
     # ── Build extractor_args ─────────────────────────────────────────────────
     # Use the standard "web" client — best quality DASH streams.
@@ -166,6 +170,9 @@ def download_video(url: str, job_id: str, progress_cb: Callable[[int], None]) ->
         "check_formats": False,
         "merge_output_format": "mp4",
     }
+
+    if cookie_file_path:
+        ydl_opts["cookiefile"] = cookie_file_path
 
     # ── Residential proxy (required for Northflank / data-center IPs) ────────
     proxy_url = os.getenv("PROXY_URL")
