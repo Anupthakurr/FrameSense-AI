@@ -68,6 +68,9 @@ def _generate_po_token() -> dict:
         cmd = "youtube-po-token-generator"
         env = os.environ.copy()
         
+        # Prevent Node.js (JSDOM) from gobbling up the 512MB container memory limit!
+        env["NODE_OPTIONS"] = "--max-old-space-size=256"
+        
         proxy = os.getenv("PROXY_URL")
         if proxy:
             env["HTTPS_PROXY"] = proxy
