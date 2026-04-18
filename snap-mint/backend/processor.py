@@ -114,10 +114,10 @@ def download_video(url: str, job_id: str, progress_cb: Callable[[int], None]) ->
             progress_cb(100)
 
     # ── Cookie handling ───────────────────────────────────────────────────────
-    # Optional: pass YouTube cookies via YOUTUBE_COOKIES env var.
+    # Optional: pass YouTube cookies via YT_COOKIES_CONTENT env var.
     # With a residential proxy, cookies are typically not required for
     # public videos, but they help with age-gated or region-locked content.
-    cookies_content = os.getenv("YOUTUBE_COOKIES")
+    cookies_content = os.getenv("YT_COOKIES_CONTENT")
     cookie_file_path = None
     if cookies_content:
         cookie_file_path = os.path.join(tempfile.gettempdir(), "youtube_cookies.txt")
