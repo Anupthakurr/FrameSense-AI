@@ -1,31 +1,36 @@
+# Use Python as the base
 FROM python:3.13-slim
 
-# Install system dependencies + Node.js 20
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# 1. Install System Dependencies (ffmpeg for video, libGL for OpenCV)
+RUN apt-get update && apt-get install -y \
     ffmpeg \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
     curl \
-    gnupg \
-    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
-    && apt-get install -y --no-install-recommends nodejs \
     && rm -rf /var/lib/apt/lists/*
+
+# 2. Install Node.js (Required for your bgutil PO Token engine)
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+    apt-get install -y nodejs
 
 WORKDIR /app
 
-# Install Python dependencies
+# 3. Copy and Install Python Requirements
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install bgutil PO Token provider globally
-RUN npm install -g bgutil-ytdlp-pot-provider
+# 4. Copy and Install Node Requirements (for the bgutil engine)
+COPY package*.json ./
+RUN npm install
 
-# Copy application code
+# 5. Copy the rest of your code
 COPY . .
 
-# Make start script executable
+# Ensure your start script is executable
 RUN chmod +x start.sh
 
-# Expose port (Northflank will set PORT env var)
+# Expose port
 EXPOSE 5000
 
-# Use start.sh to launch bgutil + gunicorn
+# Start the Node engine and Python app via your script
 CMD ["./start.sh"]
