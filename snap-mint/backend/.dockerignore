@@ -3,6 +3,3 @@ __pycache__/
 .git/
 .gitignore
 nixpacks.toml
-start.sh
-package.json
-Procfile
