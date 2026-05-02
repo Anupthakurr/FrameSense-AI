@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react'
-import Hero from './components/Hero'
+import Hero from './components/DesignProHero'
 import UrlInput from './components/UrlInput'
 import ProgressStream from './components/ProgressStream'
 import SceneGallery from './components/SceneGallery'

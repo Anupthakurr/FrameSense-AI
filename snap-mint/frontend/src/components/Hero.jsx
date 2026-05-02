@@ -141,33 +141,8 @@ function Aurora() {
 }
 
 /* ──────────────────────────────────────────────────────
-   TYPEWRITER
+   TYPEWRITER (Removed unused component)
 ────────────────────────────────────────────────────── */
-function TypewriterWord() {
-  const [idx, setIdx]       = useState(0)
-  const [display, setDisplay] = useState('')
-  const [deleting, setDeleting] = useState(false)
-
-  useEffect(() => {
-    const word = WORDS[idx]
-    let t
-    if (!deleting) {
-      if (display.length < word.length) t = setTimeout(() => setDisplay(word.slice(0, display.length + 1)), 80)
-      else t = setTimeout(() => setDeleting(true), 1600)
-    } else {
-      if (display.length > 0) t = setTimeout(() => setDisplay(display.slice(0, -1)), 40)
-      else { setDeleting(false); setIdx(i => (i + 1) % WORDS.length) }
-    }
-    return () => clearTimeout(t)
-  }, [display, deleting, idx])
-
-  return (
-    <span className="typewriter-word">
-      {display}
-      <span className="typewriter-cursor">|</span>
-    </span>
-  )
-}
 
 /* ──────────────────────────────────────────────────────
    FLOATING PDF MOCKUP
@@ -350,36 +325,32 @@ export default function Hero({ onGetStarted }) {
 
             <div className="badge-pill">
               <span className="badge-dot" />
-              <span>AI-Powered Scene Extraction</span>
-              <span className="badge-new">NEW</span>
+              <span>Scene-Based AI Screenshot Extraction</span>
             </div>
 
             <h1 className="landing-title">
-              Turn <TypewriterWord /><br />
-              into a <span className="shine-text">Smart PDF</span>
+              Turn any YouTube video<br />
+              into a <span className="shine-text">smart PDF</span>
             </h1>
 
             <p className="landing-subtitle">
-              SnapMint downloads your YouTube video, detects scene changes,
-              filters presenter-blocked frames, and delivers a crisp timestamped PDF.
+              SnapMint detects scene changes, filters out frames where a<br/>
+              person is blocking the content, and assembles a clean,<br/>
+              timestamped PDF — instantly.
             </p>
 
-            <div className="hero-cta-row">
-              <button className="btn-hero-primary glow-btn" onClick={onGetStarted} id="hero-get-started-btn">
-                <span className="rotating-border" />
-                ✨ Generate PDF Free
-              </button>
-              <a href="https://github.com/Anupthakurr/FrameSense-AI" target="_blank" rel="noreferrer" className="btn-hero-ghost">
-                ⭐ Star on GitHub
-              </a>
+            <div className="hero-features">
+              <div className="hero-feature-tag"><span>🎬</span><span>Scene Detection</span></div>
+              <div className="hero-feature-tag"><span>🧠</span><span>Person Filter</span></div>
+              <div className="hero-feature-tag"><span>⏱️</span><span>Timestamps</span></div>
+              <div className="hero-feature-tag"><span>📄</span><span>PDF Export</span></div>
+              <div className="hero-feature-tag"><span>🔴</span><span>Real-time Progress</span></div>
             </div>
 
-            <div className="trust-row">
-              <span>🔒 No login</span>
-              <span className="trust-dot" />
-              <span>⚡ Runs locally</span>
-              <span className="trust-dot" />
-              <span>📂 Your data stays with you</span>
+            <div style={{ marginTop: '20px' }}>
+              <button onClick={onGetStarted} style={{ background: 'none', border: 'none', color: '#818cf8', fontSize: '1rem', fontWeight: 500, cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: '4px' }}>
+                Get started &rarr;
+              </button>
             </div>
 
         </div>

@@ -1,8 +1,8 @@
 flask
-flask-cors
-gunicorn
-yt-dlp>=2025.10.0
+flask-cors<6
+yt-dlp>=2025.1.1,<2026
 scenedetect[opencv-headless]
 opencv-python-headless
 Pillow
 fpdf2
+easyocr

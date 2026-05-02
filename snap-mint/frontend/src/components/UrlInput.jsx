@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react'
 
-const MIN_THRESHOLD = 15
-const MAX_THRESHOLD = 60
-const DEFAULT_THRESHOLD = 27
+const MIN_THRESHOLD = 5
+const MAX_THRESHOLD = 40
+const DEFAULT_THRESHOLD = 5
 
 export default function UrlInput({ onGenerate }) {
   const [url, setUrl] = useState('')

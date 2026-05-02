@@ -1,5 +1,5 @@
 """
-app.py — Flask API for SnapMint
+app.py — Flask API for SnapMint (local)
 
 Routes:
   POST   /api/process              → start job
@@ -7,9 +7,12 @@ Routes:
   GET    /api/scenes/<job_id>      → thumbnails JSON
   GET    /api/download/<job_id>    → PDF download
   DELETE /api/cleanup/<job_id>     → remove temp files
+  GET    /api/health               → health check
 """
 
 import os
+import sys
+import io
 import json
 import queue
 import threading
@@ -18,14 +21,19 @@ from pathlib import Path
 from flask import Flask, request, jsonify, Response, send_file
 from flask_cors import CORS
 
+# Force UTF-8 output to prevent Windows console encoding crashes with progress bars
+if sys.stdout.encoding != 'utf-8':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+if sys.stderr.encoding != 'utf-8':
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+
 from processor import run_pipeline, cleanup_job, JOBS_DIR
 
 # ---------------------------------------------------------------------------
 # App setup
 # ---------------------------------------------------------------------------
 app = Flask(__name__)
-
-CORS(app, origins=os.getenv("CORS_ORIGINS", "*").split(","))
+CORS(app, origins="*")
 
 # In-memory job store: job_id → { status, queue, result, created_at }
 _jobs: dict = {}
@@ -85,9 +93,7 @@ def start_process():
         finally:
             job["queue"].put(None)  # sentinel
 
-    t = threading.Thread(target=worker, daemon=True)
-    t.start()
-
+    threading.Thread(target=worker, daemon=True).start()
     return jsonify({"job_id": job_id}), 202
 
 
@@ -187,7 +193,7 @@ def _auto_cleanup():
         to_remove = []
         with _jobs_lock:
             for jid, job in _jobs.items():
-                if now - job["created_at"] > 900:  # 15 min
+                if job["status"] in ["done", "error"] and now - job["created_at"] > 900:
                     to_remove.append(jid)
         for jid in to_remove:
             with _jobs_lock:
@@ -199,7 +205,6 @@ def _auto_cleanup():
 
 
 threading.Thread(target=_auto_cleanup, daemon=True).start()
-
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
